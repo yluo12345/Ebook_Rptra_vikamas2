@@ -30,11 +30,27 @@
             border-radius: 12px;
         }
 
-        .card-title {
-            font-weight: bold;
-            font-size: 16px;
-            min-height: 50px;
+       .card-title {
+            font-size: 14px;
+            min-height: 45px;
         }
+
+        @media (max-width: 768px) {
+    .card-title {
+        font-size: 12px;
+        display: none;
+    }
+
+    .card img {
+        height: 180px !important;
+        object-fit: cover;
+    }
+
+    .btn {
+        font-size: 12px;
+        padding: 6px;
+    }
+}
 
         @media (max-width: 768px) {
             h1 {
@@ -70,12 +86,14 @@
             <!-- Menu -->
             <div class="collapse navbar-collapse" id="navbarMenu">
                 <div class="ms-auto d-flex flex-column flex-lg-row gap-2 mt-3 mt-lg-0">
-                    <a href="/upload" class="btn btn-light">
-                        Upload Ebook
+                    <a href="/" class="btn btn-light">
+                        Home
                     </a>
-
-                    <a href="/" class="btn btn-warning">
-                        Kategori Ebook
+                    <a href="/upload" class="btn btn-warning">
+                        Upload
+                    </a>
+                    <a href="/edit" class="btn btn-warning">
+                        Edit
                     </a>
                 </div>
             </div>

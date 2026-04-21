@@ -2,11 +2,174 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Ebook</title>
+    <title>Ebook</title>
+
+    <!-- WAJIB Responsive -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .wrapper {
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .card {
+            border-radius: 12px;
+        }
+
+       .card-title {
+            font-size: 14px;
+            min-height: 45px;
+        }
+
+        @media (max-width: 768px) {
+    .card-title {
+        font-size: 12px;
+        display: none;
+    }
+
+    .card img {
+        height: 180px !important;
+        object-fit: cover;
+    }
+
+    .btn {
+        font-size: 12px;
+        padding: 6px;
+    }
+}
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 22px;
+            }
+
+            .card-title {
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
+<div class="wrapper">
+
+    <!-- HEADER NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+
+            <!-- Logo -->
+            <a class="navbar-brand fw-bold" href="#">
+                Ebook RPTRA Vikamas 2
+            </a>
+
+            <!-- Tombol Hamburger -->
+            <button class="navbar-toggler" 
+                    type="button" 
+                    data-bs-toggle="collapse" 
+                    data-bs-target="#navbarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Menu -->
+            <div class="collapse navbar-collapse" id="navbarMenu">
+                <div class="ms-auto d-flex flex-column flex-lg-row gap-2 mt-3 mt-lg-0">
+                    <a href="/" class="btn btn-warning">
+                        Home
+                    </a>
+                    <a href="/upload" class="btn btn-light">
+                        Upload Ebook
+                    </a>
+                    <a href="/edit" class="btn btn-light">
+                        Edit Ebook
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="container mt-4">
+
+        <h1 class="mb-4 text-center">
+            Daftar Ebook RPTRA Vikamas 2
+        </h1>
+             <form method="GET" action="/" class="mb-4">
+                <div class="input-group">
+
+                    <input
+                        type="text"
+                        name="search"
+                        class="form-control"
+                        placeholder="Cari judul ebook..."
+                        value="{{ search }}"
+                    >
+
+                    <button class="btn btn-primary" type="submit">
+                        Cari
+                    </button>
+
+                    {% if search %}
+                    <a href="/" class="btn btn-secondary">
+                        Reset
+                    </a>
+                    {% endif %}
+
+                </div>
+             </form>
+        <!-- GRID EBOOK -->
+        <div class="row">
+            {% for ebook in ebooks %}
+            <div class="col-4 col-sm-4 col-md-3 col-lg-3 mb-4">
+
+                <div class="card h-100 shadow-sm">
+                     {% if ebook.image %}
+                    <img src="{{ url_for('static', filename='images/' + ebook.image) }}"
+                        class="card-img-top"
+                        alt="Cover Ebook"
+                        style="height: 250px; object-fit: cover;">
+                    {% else %}
+                    <img src="{{ url_for('static', filename='images/default.jpg') }}"
+                        class="card-img-top"
+                        alt="Default Cover"
+                        style="height: 250px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body d-flex flex-column">
+
+                        <!-- Judul -->
+                        <h5 class="card-title">
+                            {{ ebook.title }}
+                        </h5>
+
+                        <!-- Tombol Download -->
+                        <a href="/download/{{ ebook.filename }}"
+                           class="btn btn-success mt-auto w-100">
+                           Download
+                        </a>
+
+                    </div>
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+</div>
 
 <div class="container mt-5">
     <h2 class="text-center mb-4">Halaman Edit Ebook</h2>
@@ -62,5 +225,30 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Script agar hamburger menutup saat klik di mana saja -->
+<script>
+document.addEventListener("click", function (event) {
+    const navbarCollapse = document.getElementById("navbarMenu");
+    const navbarToggler = document.querySelector(".navbar-toggler");
+
+    // Cek apakah menu sedang terbuka
+    const isOpen = navbarCollapse.classList.contains("show");
+
+    // Jika terbuka dan klik bukan di dalam menu / tombol hamburger
+    if (
+        isOpen &&
+        !navbarCollapse.contains(event.target) &&
+        !navbarToggler.contains(event.target)
+    ) {
+        const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse)
+            || new bootstrap.Collapse(navbarCollapse, {
+                toggle: false
+            });
+
+        bsCollapse.hide();
+    }
+});
+</script>
+
 </body>
 </html>

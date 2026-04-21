@@ -25,17 +25,32 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-
 # =========================
 # HALAMAN UTAMA
 # =========================
 @app.route('/')
 def index():
+    search = request.args.get('search', '')
+
     conn = get_db_connection()
-    ebooks = conn.execute('SELECT * FROM ebooks').fetchall()
+
+    if search:
+        ebooks = conn.execute(
+            "SELECT * FROM ebooks WHERE title LIKE ?",
+            ('%' + search + '%',)
+        ).fetchall()
+    else:
+        ebooks = conn.execute(
+            "SELECT * FROM ebooks"
+        ).fetchall()
+
     conn.close()
 
-    return render_template('index.html', ebooks=ebooks)
+    return render_template(
+        'index.html',
+        ebooks=ebooks,
+        search=search
+    )
 
 
 # =========================
