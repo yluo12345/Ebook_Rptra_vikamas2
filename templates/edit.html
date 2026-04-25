@@ -86,14 +86,14 @@
             <!-- Menu -->
             <div class="collapse navbar-collapse" id="navbarMenu">
                 <div class="ms-auto d-flex flex-column flex-lg-row gap-2 mt-3 mt-lg-0">
-                    <a href="/" class="btn btn-warning">
+                    <a href="/" class="btn btn-light">
                         Home
                     </a>
                     <a href="/upload" class="btn btn-light">
-                        Upload Ebook
+                        Upload
                     </a>
-                    <a href="/edit" class="btn btn-light">
-                        Edit Ebook
+                    <a href="/edit" class="btn btn-warning">
+                        Edit
                     </a>
                 </div>
             </div>
@@ -103,10 +103,57 @@
 
     <!-- CONTENT -->
     <div class="container mt-4">
+    <h2 class="text-center mb-4">Halaman Edit Ebook</h2>
 
-        <h1 class="mb-4 text-center">
-            Daftar Ebook RPTRA Vikamas 2
-        </h1>
+    <div class="row">
+        {% for ebook in ebooks %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+
+                <!-- Cover Ebook -->
+                {% if ebook.image %}
+                <img src="{{ url_for('static', filename='images/' + ebook.image) }}"
+                     class="card-img-top"
+                     alt="Cover Ebook"
+                     style="height: 250px; object-fit: cover;">
+                {% else %}
+                <img src="{{ url_for('static', filename='images/default.jpg') }}"
+                     class="card-img-top"
+                     alt="Default Cover"
+                     style="height: 250px; object-fit: cover;">
+                {% endif %}
+
+                <div class="card-body">
+                    <form method="POST" action="/update/{{ ebook.id }}" enctype="multipart/form-data">
+                        <label class="form-label">Judul Ebook</label>
+                        <input type="text"
+                               name="title"
+                               value="{{ ebook.title }}"
+                               class="form-control mb-3"
+                               required>
+
+                        <label class="form-label">Ganti Gambar Cover</label>
+                        <input type="file"
+                               name="image"
+                               class="form-control mb-3"
+                               accept="image/*">
+
+                        <button type="submit" class="btn btn-primary w-100 mb-2">
+                            Update Ebook
+                        </button>
+                    </form>
+
+                    <a href="/delete/{{ ebook.id }}"
+                       class="btn btn-danger w-100"
+                       onclick="return confirm('Yakin ingin menghapus ebook ini?')">
+                        Hapus Ebook
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
              <form method="GET" action="/" class="mb-4">
                 <div class="input-group">
 
@@ -171,58 +218,6 @@
 
 </div>
 
-<div class="container mt-5">
-    <h2 class="text-center mb-4">Halaman Edit Ebook</h2>
-
-    <div class="row">
-        {% for ebook in ebooks %}
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100">
-
-                <!-- Cover Ebook -->
-                {% if ebook.image %}
-                <img src="{{ url_for('static', filename='images/' + ebook.image) }}"
-                     class="card-img-top"
-                     alt="Cover Ebook"
-                     style="height: 250px; object-fit: cover;">
-                {% else %}
-                <img src="{{ url_for('static', filename='images/default.jpg') }}"
-                     class="card-img-top"
-                     alt="Default Cover"
-                     style="height: 250px; object-fit: cover;">
-                {% endif %}
-
-                <div class="card-body">
-                    <form method="POST" action="/update/{{ ebook.id }}" enctype="multipart/form-data">
-                        <label class="form-label">Judul Ebook</label>
-                        <input type="text"
-                               name="title"
-                               value="{{ ebook.title }}"
-                               class="form-control mb-3"
-                               required>
-
-                        <label class="form-label">Ganti Gambar Cover</label>
-                        <input type="file"
-                               name="image"
-                               class="form-control mb-3"
-                               accept="image/*">
-
-                        <button type="submit" class="btn btn-primary w-100 mb-2">
-                            Update Ebook
-                        </button>
-                    </form>
-
-                    <a href="/delete/{{ ebook.id }}"
-                       class="btn btn-danger w-100"
-                       onclick="return confirm('Yakin ingin menghapus ebook ini?')">
-                        Hapus Ebook
-                    </a>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Script agar hamburger menutup saat klik di mana saja -->
