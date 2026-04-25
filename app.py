@@ -30,8 +30,7 @@ def get_db_connection():
 
     conn = psycopg2.connect(
         database_url,
-        sslmode="require",
-        cursor_factory=RealDictCursor
+        sslmode="require"
     )
 
     return conn
