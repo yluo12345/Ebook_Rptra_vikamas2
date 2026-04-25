@@ -23,10 +23,18 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 # KONEKSI DATABASE
 # =========================
 def get_db_connection():
+    database_url = os.environ.get("DATABASE_URL")
+
+    if not database_url:
+        raise ValueError("DATABASE_URL tidak ditemukan di Railway!")
+
     conn = psycopg2.connect(
-        os.environ.get("DATABASE_URL"),
+        database_url,
+        sslmode="require",
         cursor_factory=RealDictCursor
     )
+
+    return conn
     return conn
 
 
@@ -261,7 +269,6 @@ def delete(id):
 # =========================
 # JALANKAN APP
 # =========================
-def create_table():
     if __name__ == "__main__":
         create_table()
         app.run(debug=True)
