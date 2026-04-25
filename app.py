@@ -59,6 +59,13 @@ def create_table():
 
 
 # =========================
+# BUAT TABEL OTOMATIS SAAT APP START
+# =========================
+with app.app_context():
+    create_table()
+
+
+# =========================
 # HALAMAN UTAMA
 # =========================
 @app.route("/")
@@ -70,12 +77,19 @@ def index():
 
     if search:
         cur.execute(
-            "SELECT * FROM ebooks WHERE title ILIKE %s ORDER BY id DESC",
+            """
+            SELECT * FROM ebooks
+            WHERE title ILIKE %s
+            ORDER BY id DESC
+            """,
             ("%" + search + "%",)
         )
     else:
         cur.execute(
-            "SELECT * FROM ebooks ORDER BY id DESC"
+            """
+            SELECT * FROM ebooks
+            ORDER BY id DESC
+            """
         )
 
     ebooks = cur.fetchall()
@@ -159,13 +173,20 @@ def edit():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM ebooks ORDER BY id DESC")
+    cur.execute("""
+        SELECT * FROM ebooks
+        ORDER BY id DESC
+    """)
+
     ebooks = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    return render_template("edit.html", ebooks=ebooks)
+    return render_template(
+        "edit.html",
+        ebooks=ebooks
+    )
 
 
 # =========================
@@ -268,6 +289,5 @@ def delete(id):
 # =========================
 # JALANKAN APP
 # =========================
-    if __name__ == "__main__":
-        create_table()
-        app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
