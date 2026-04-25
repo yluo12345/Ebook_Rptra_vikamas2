@@ -2,13 +2,14 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, redirect, send_from_directory
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
 # =========================
 # FOLDER PENYIMPANAN
 # =========================
-UPLOAD_FOLDER = "ebooks"
+UPLOAD_FOLDER = "static/ebooks"
 IMAGE_FOLDER = "static/images"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -41,7 +42,7 @@ def get_db_connection():
 # =========================
 def create_table():
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ebooks (
@@ -72,7 +73,7 @@ def index():
     search = request.args.get("search", "")
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     if search:
         cur.execute(
@@ -116,31 +117,35 @@ def upload():
         if not file or not image:
             return "File ebook dan gambar wajib diupload"
 
+        # Nama file aman
+        filename = secure_filename(file.filename)
+        image_name = secure_filename(image.filename)
+
         # Simpan file ebook
         file_path = os.path.join(
             app.config["UPLOAD_FOLDER"],
-            file.filename
+            filename
         )
         file.save(file_path)
 
         # Simpan gambar cover
         image_path = os.path.join(
             app.config["IMAGE_FOLDER"],
-            image.filename
+            image_name
         )
         image.save(image_path)
 
         # Simpan ke database
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
 
         cur.execute("""
             INSERT INTO ebooks (title, filename, image)
             VALUES (%s, %s, %s)
         """, (
             title,
-            file.filename,
-            image.filename
+            filename,
+            image_name
         ))
 
         conn.commit()
@@ -170,7 +175,7 @@ def download(filename):
 @app.route("/edit")
 def edit():
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     cur.execute("""
         SELECT * FROM ebooks
@@ -194,16 +199,16 @@ def edit():
 @app.route("/update/<int:id>", methods=["POST"])
 def update(id):
     title = request.form["title"]
-    image = request.files["image"]
+    image = request.files.get("image")
 
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Jika upload gambar baru
     if image and image.filename != "":
+        image_name = secure_filename(image.filename)
         image_path = os.path.join(
             app.config["IMAGE_FOLDER"],
-            image.filename
+            image_name
         )
         image.save(image_path)
 
@@ -213,7 +218,7 @@ def update(id):
             WHERE id = %s
         """, (
             title,
-            image.filename,
+            image_name,
             id
         ))
 
@@ -240,9 +245,8 @@ def update(id):
 @app.route("/delete/<int:id>")
 def delete(id):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    # Ambil data file dulu
     cur.execute("""
         SELECT filename, image
         FROM ebooks
