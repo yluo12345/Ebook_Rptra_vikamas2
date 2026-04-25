@@ -261,6 +261,7 @@ def delete(id):
 # =========================
 # JALANKAN APP
 # =========================
-if __name__ == "__main__":
-    create_table()
-    app.run(debug=True)
+def create_table():
+    if __name__ == "__main__":
+        create_table()
+        app.run(debug=True)
