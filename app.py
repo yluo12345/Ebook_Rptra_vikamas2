@@ -162,6 +162,14 @@ def upload():
 # =========================
 @app.route("/download/<filename>")
 def download(filename):
+    file_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
+
+    if not os.path.exists(file_path):
+        return f"File tidak ditemukan: {file_path}"
+
     return send_from_directory(
         app.config["UPLOAD_FOLDER"],
         filename,
