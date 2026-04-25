@@ -157,9 +157,9 @@
                         </h5>
 
                         <!-- Tombol Download -->
-                        <a href="/download/{{ ebook.filename }}"
-                           class="btn btn-success mt-auto w-100">
-                           Download
+                        <a href="{{ url_for('download', filename=ebook['filename']) }}"
+                        class="btn btn-success">
+                        Download Ebook
                         </a>
 
                     </div>
