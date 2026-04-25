@@ -1,16 +1,18 @@
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, request, redirect, send_from_directory
 
 app = Flask(__name__)
 
+# =========================
+# FOLDER PENYIMPANAN
+# =========================
+UPLOAD_FOLDER = "ebooks"
+IMAGE_FOLDER = "static/images"
 
-# Folder penyimpanan file ebook
-UPLOAD_FOLDER = 'ebooks'
-IMAGE_FOLDER = 'static/images'
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['IMAGE_FOLDER'] = IMAGE_FOLDER
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["IMAGE_FOLDER"] = IMAGE_FOLDER
 
 # Pastikan folder ada
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -21,33 +23,61 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 # KONEKSI DATABASE
 # =========================
 def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(
+        os.environ.get("DATABASE_URL"),
+        cursor_factory=RealDictCursor
+    )
     return conn
+
+
+# =========================
+# BUAT TABEL JIKA BELUM ADA
+# =========================
+def create_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ebooks (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            image TEXT
+        )
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
 
 # =========================
 # HALAMAN UTAMA
 # =========================
-@app.route('/')
+@app.route("/")
 def index():
-    search = request.args.get('search', '')
+    search = request.args.get("search", "")
 
     conn = get_db_connection()
+    cur = conn.cursor()
 
     if search:
-        ebooks = conn.execute(
-            "SELECT * FROM ebooks WHERE title LIKE ?",
-            ('%' + search + '%',)
-        ).fetchall()
+        cur.execute(
+            "SELECT * FROM ebooks WHERE title ILIKE %s ORDER BY id DESC",
+            ("%" + search + "%",)
+        )
     else:
-        ebooks = conn.execute(
-            "SELECT * FROM ebooks"
-        ).fetchall()
+        cur.execute(
+            "SELECT * FROM ebooks ORDER BY id DESC"
+        )
 
+    ebooks = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     return render_template(
-        'index.html',
+        "index.html",
         ebooks=ebooks,
         search=search
     )
@@ -56,60 +86,76 @@ def index():
 # =========================
 # UPLOAD EBOOK
 # =========================
-@app.route('/upload', methods=['GET', 'POST'])
+@app.route("/upload", methods=["GET", "POST"])
 def upload():
-    if request.method == 'POST':
-        title = request.form['title']
-        file = request.files['file']
-        image = request.files['image']
+    if request.method == "POST":
+        title = request.form["title"]
+        file = request.files["file"]
+        image = request.files["image"]
 
-        # Validasi sederhana
         if not file or not image:
             return "File ebook dan gambar wajib diupload"
 
         # Simpan file ebook
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file_path = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            file.filename
+        )
         file.save(file_path)
 
         # Simpan gambar cover
-        image_path = os.path.join(app.config['IMAGE_FOLDER'], image.filename)
+        image_path = os.path.join(
+            app.config["IMAGE_FOLDER"],
+            image.filename
+        )
         image.save(image_path)
 
         # Simpan ke database
         conn = get_db_connection()
-        conn.execute(
-            '''
+        cur = conn.cursor()
+
+        cur.execute("""
             INSERT INTO ebooks (title, filename, image)
-            VALUES (?, ?, ?)
-            ''',
-            (title, file.filename, image.filename)
-        )
+            VALUES (%s, %s, %s)
+        """, (
+            title,
+            file.filename,
+            image.filename
+        ))
+
         conn.commit()
+        cur.close()
         conn.close()
 
-        return redirect('/')
+        return redirect("/")
 
-    return render_template('upload.html')
+    return render_template("upload.html")
 
 
 # =========================
 # DOWNLOAD EBOOK
 # =========================
-@app.route('/download/<filename>')
+@app.route("/download/<filename>")
 def download(filename):
     return send_from_directory(
-        app.config['UPLOAD_FOLDER'],
+        app.config["UPLOAD_FOLDER"],
         filename,
         as_attachment=True
     )
 
+
 # =========================
-# HALAMAN EDIT EBOOK
+# HALAMAN EDIT
 # =========================
-@app.route('/edit')
+@app.route("/edit")
 def edit():
     conn = get_db_connection()
-    ebooks = conn.execute("SELECT * FROM ebooks").fetchall()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM ebooks ORDER BY id DESC")
+    ebooks = cur.fetchall()
+
+    cur.close()
     conn.close()
 
     return render_template("edit.html", ebooks=ebooks)
@@ -118,76 +164,103 @@ def edit():
 # =========================
 # UPDATE EBOOK
 # =========================
-@app.route('/update/<int:id>', methods=['POST'])
+@app.route("/update/<int:id>", methods=["POST"])
 def update(id):
-    title = request.form['title']
-    image = request.files['image']
+    title = request.form["title"]
+    image = request.files["image"]
 
     conn = get_db_connection()
+    cur = conn.cursor()
 
     # Jika upload gambar baru
     if image and image.filename != "":
-        image.save(os.path.join(app.config['IMAGE_FOLDER'], image.filename))
+        image_path = os.path.join(
+            app.config["IMAGE_FOLDER"],
+            image.filename
+        )
+        image.save(image_path)
 
-        conn.execute("""
+        cur.execute("""
             UPDATE ebooks
-            SET title = ?, image = ?
-            WHERE id = ?
-        """, (title, image.filename, id))
+            SET title = %s, image = %s
+            WHERE id = %s
+        """, (
+            title,
+            image.filename,
+            id
+        ))
 
     else:
-        conn.execute("""
+        cur.execute("""
             UPDATE ebooks
-            SET title = ?
-            WHERE id = ?
-        """, (title, id))
+            SET title = %s
+            WHERE id = %s
+        """, (
+            title,
+            id
+        ))
 
     conn.commit()
+    cur.close()
     conn.close()
 
-    return redirect('/edit')
+    return redirect("/edit")
 
 
 # =========================
 # HAPUS EBOOK
 # =========================
-@app.route('/delete/<int:id>')
+@app.route("/delete/<int:id>")
 def delete(id):
     conn = get_db_connection()
+    cur = conn.cursor()
 
-    # Ambil nama file sebelum dihapus
-    ebook = conn.execute(
-        "SELECT filename, image FROM ebooks WHERE id = ?",
-        (id,)
-    ).fetchone()
+    # Ambil data file dulu
+    cur.execute("""
+        SELECT filename, image
+        FROM ebooks
+        WHERE id = %s
+    """, (id,))
+
+    ebook = cur.fetchone()
 
     if ebook:
         # Hapus file ebook
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], ebook['filename'])
+        file_path = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            ebook["filename"]
+        )
+
         if os.path.exists(file_path):
             os.remove(file_path)
 
         # Hapus gambar cover
-        if ebook['image']:
-            image_path = os.path.join(app.config['IMAGE_FOLDER'], ebook['image'])
+        if ebook["image"]:
+            image_path = os.path.join(
+                app.config["IMAGE_FOLDER"],
+                ebook["image"]
+            )
+
             if os.path.exists(image_path):
                 os.remove(image_path)
 
         # Hapus dari database
-        conn.execute(
-            "DELETE FROM ebooks WHERE id = ?",
-            (id,)
-        )
+        cur.execute("""
+            DELETE FROM ebooks
+            WHERE id = %s
+        """, (id,))
+
         conn.commit()
 
+    cur.close()
     conn.close()
 
-    return redirect('/edit')
+    return redirect("/edit")
 
 
 # =========================
 # JALANKAN APP
 # =========================
-if __name__ == '__main__':
+if __name__ == "__main__":
+    create_table()
     app.run(debug=True)
-
