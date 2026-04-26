@@ -3,3 +3,4 @@ waitress
 gunicorn
 psycopg2-binary
 SQLAlchemy
+cloudinary

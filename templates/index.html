@@ -139,12 +139,12 @@
 
                 <div class="card h-100 shadow-sm">
                      {% if ebook.image %}
-                    <img src="{{ url_for('static', filename='images/' + ebook.image) }}"
+                    <img src="{{ ebook.image }}">
                         class="card-img-top"
                         alt="Cover Ebook"
                         style="height: 250px; object-fit: cover;">
                     {% else %}
-                    <img src="{{ url_for('static', filename='images/default.jpg') }}"
+                    <img src="{{ ebook.image }}">
                         class="card-img-top"
                         alt="Default Cover"
                         style="height: 250px; object-fit: cover;">
@@ -157,10 +157,7 @@
                         </h5>
 
                         <!-- Tombol Download -->
-                        <a href="{{  url_for('download', filename=ebook['filename']) }}"
-                           class="btn btn-success mt-auto w-100">
-                           Download
-                        </a>
+                        <a href="{{ ebook.filename }}" target="_blank">Download</a>
 
                     </div>
                 </div>

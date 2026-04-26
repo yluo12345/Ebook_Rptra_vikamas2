@@ -1,48 +1,41 @@
 import os
 import psycopg2
+import cloudinary
+import cloudinary.uploader
+
 from psycopg2.extras import RealDictCursor
-from flask import Flask, render_template, request, redirect, send_from_directory
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect
 
 app = Flask(__name__)
 
 # =========================
-# FOLDER PENYIMPANAN
+# CLOUDINARY CONFIG
 # =========================
-UPLOAD_FOLDER = "static/ebooks"
-IMAGE_FOLDER = "static/images"
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["IMAGE_FOLDER"] = IMAGE_FOLDER
-
-# Pastikan folder ada
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
-
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    secure=True
+)
 
 # =========================
-# KONEKSI DATABASE
+# DATABASE
 # =========================
 def get_db_connection():
     database_url = os.environ.get("DATABASE_URL")
-
-    if not database_url:
-        raise ValueError("DATABASE_URL tidak ditemukan di Railway!")
 
     conn = psycopg2.connect(
         database_url,
         sslmode="require"
     )
-
     return conn
 
-
 # =========================
-# BUAT TABEL JIKA BELUM ADA
+# CREATE TABLE
 # =========================
 def create_table():
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS ebooks (
@@ -57,16 +50,11 @@ def create_table():
     cur.close()
     conn.close()
 
-
-# =========================
-# BUAT TABEL OTOMATIS SAAT APP START
-# =========================
 with app.app_context():
     create_table()
 
-
 # =========================
-# HALAMAN UTAMA
+# HOME
 # =========================
 @app.route("/")
 def index():
@@ -76,36 +64,26 @@ def index():
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
     if search:
-        cur.execute(
-            """
+        cur.execute("""
             SELECT * FROM ebooks
             WHERE title ILIKE %s
             ORDER BY id DESC
-            """,
-            ("%" + search + "%",)
-        )
+        """, ("%" + search + "%",))
     else:
-        cur.execute(
-            """
+        cur.execute("""
             SELECT * FROM ebooks
             ORDER BY id DESC
-            """
-        )
+        """)
 
     ebooks = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    return render_template(
-        "index.html",
-        ebooks=ebooks,
-        search=search
-    )
-
+    return render_template("index.html", ebooks=ebooks, search=search)
 
 # =========================
-# UPLOAD EBOOK
+# UPLOAD (CLOUDINARY)
 # =========================
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
@@ -117,36 +95,29 @@ def upload():
         if not file or not image:
             return "File ebook dan gambar wajib diupload"
 
-        # Nama file aman
-        filename = secure_filename(file.filename)
-        image_name = secure_filename(image.filename)
-
-        # Simpan file ebook
-        file_path = os.path.join(
-            app.config["UPLOAD_FOLDER"],
-            filename
+        # upload PDF ke cloudinary
+        pdf_upload = cloudinary.uploader.upload(
+            file,
+            resource_type="raw"
         )
-        file.save(file_path)
 
-        # Simpan gambar cover
-        image_path = os.path.join(
-            app.config["IMAGE_FOLDER"],
-            image_name
+        # upload gambar
+        image_upload = cloudinary.uploader.upload(
+            image,
+            folder="ebook_covers"
         )
-        image.save(image_path)
 
-        # Simpan ke database
+        pdf_url = pdf_upload["secure_url"]
+        image_url = image_upload["secure_url"]
+
+        # simpan ke database
         conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur = conn.cursor()
 
         cur.execute("""
             INSERT INTO ebooks (title, filename, image)
             VALUES (%s, %s, %s)
-        """, (
-            title,
-            filename,
-            image_name
-        ))
+        """, (title, pdf_url, image_url))
 
         conn.commit()
         cur.close()
@@ -156,53 +127,24 @@ def upload():
 
     return render_template("upload.html")
 
-
 # =========================
-# DOWNLOAD EBOOK
-# =========================
-@app.route("/download/<filename>")
-def download(filename):
-    file_path = os.path.join(
-        app.config["UPLOAD_FOLDER"],
-        filename
-    )
-
-    if not os.path.exists(file_path):
-        return f"File tidak ditemukan: {file_path}"
-
-    return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
-        filename,
-        as_attachment=True
-    )
-
-
-# =========================
-# HALAMAN EDIT
+# EDIT PAGE
 # =========================
 @app.route("/edit")
 def edit():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    cur.execute("""
-        SELECT * FROM ebooks
-        ORDER BY id DESC
-    """)
-
+    cur.execute("SELECT * FROM ebooks ORDER BY id DESC")
     ebooks = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    return render_template(
-        "edit.html",
-        ebooks=ebooks
-    )
-
+    return render_template("edit.html", ebooks=ebooks)
 
 # =========================
-# UPDATE EBOOK
+# UPDATE (hanya judul / gambar optional)
 # =========================
 @app.route("/update/<int:id>", methods=["POST"])
 def update(id):
@@ -210,35 +152,27 @@ def update(id):
     image = request.files.get("image")
 
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
 
     if image and image.filename != "":
-        image_name = secure_filename(image.filename)
-        image_path = os.path.join(
-            app.config["IMAGE_FOLDER"],
-            image_name
+        upload = cloudinary.uploader.upload(
+            image,
+            folder="ebook_covers"
         )
-        image.save(image_path)
+        image_url = upload["secure_url"]
 
         cur.execute("""
             UPDATE ebooks
             SET title = %s, image = %s
             WHERE id = %s
-        """, (
-            title,
-            image_name,
-            id
-        ))
+        """, (title, image_url, id))
 
     else:
         cur.execute("""
             UPDATE ebooks
             SET title = %s
             WHERE id = %s
-        """, (
-            title,
-            id
-        ))
+        """, (title, id))
 
     conn.commit()
     cur.close()
@@ -246,59 +180,24 @@ def update(id):
 
     return redirect("/edit")
 
-
 # =========================
-# HAPUS EBOOK
+# DELETE (hapus dari DB saja)
 # =========================
 @app.route("/delete/<int:id>")
 def delete(id):
     conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
 
-    cur.execute("""
-        SELECT filename, image
-        FROM ebooks
-        WHERE id = %s
-    """, (id,))
+    cur.execute("DELETE FROM ebooks WHERE id = %s", (id,))
 
-    ebook = cur.fetchone()
-
-    if ebook:
-        # Hapus file ebook
-        file_path = os.path.join(
-            app.config["UPLOAD_FOLDER"],
-            ebook["filename"]
-        )
-
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        # Hapus gambar cover
-        if ebook["image"]:
-            image_path = os.path.join(
-                app.config["IMAGE_FOLDER"],
-                ebook["image"]
-            )
-
-            if os.path.exists(image_path):
-                os.remove(image_path)
-
-        # Hapus dari database
-        cur.execute("""
-            DELETE FROM ebooks
-            WHERE id = %s
-        """, (id,))
-
-        conn.commit()
-
+    conn.commit()
     cur.close()
     conn.close()
 
     return redirect("/edit")
 
-
 # =========================
-# JALANKAN APP
+# RUN APP
 # =========================
 if __name__ == "__main__":
     app.run(debug=True)
