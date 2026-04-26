@@ -109,7 +109,7 @@ def upload():
 
             pdf_upload = cloudinary.uploader.upload(
                 file,
-                resource_type="raw"
+                resource_type="auto"
             )
 
             print("PDF RESULT:", pdf_upload)
