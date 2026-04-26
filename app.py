@@ -88,42 +88,63 @@ def index():
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        title = request.form["title"]
-        file = request.files.get("file")
-        image = request.files.get("image")
+        try:
+            print("UPLOAD DIMULAI")
 
-        if not file or file.filename == "" or not image or image.filename == "":
-             return "File ebook dan gambar wajib diupload"
+            title = request.form["title"]
+            file = request.files.get("file")
+            image = request.files.get("image")
 
-        # upload PDF ke cloudinary
-        pdf_upload = cloudinary.uploader.upload(
-            file,
-            resource_type="raw"
-        )
+            print("TITLE:", title)
+            print("FILE:", file)
+            print("IMAGE:", image)
 
-        # upload gambar
-        image_upload = cloudinary.uploader.upload(
-            image,
-            folder="ebook_covers"
-        )
+            if not file or file.filename == "":
+                return "File PDF tidak terbaca"
 
-        pdf_url = pdf_upload["secure_url"]
-        image_url = image_upload["secure_url"]
+            if not image or image.filename == "":
+                return "Gambar cover tidak terbaca"
 
-        # simpan ke database
-        conn = get_db_connection()
-        cur = conn.cursor()
+            print("UPLOAD PDF KE CLOUDINARY")
 
-        cur.execute("""
-            INSERT INTO ebooks (title, filename, image)
-            VALUES (%s, %s, %s)
-        """, (title, pdf_url, image_url))
+            pdf_upload = cloudinary.uploader.upload(
+                file,
+                resource_type="raw"
+            )
 
-        conn.commit()
-        cur.close()
-        conn.close()
+            print("PDF RESULT:", pdf_upload)
 
-        return redirect("/")
+            print("UPLOAD IMAGE KE CLOUDINARY")
+
+            image_upload = cloudinary.uploader.upload(
+                image,
+                folder="ebook_covers"
+            )
+
+            print("IMAGE RESULT:", image_upload)
+
+            pdf_url = pdf_upload["secure_url"]
+            image_url = image_upload["secure_url"]
+
+            print("PDF URL:", pdf_url)
+            print("IMAGE URL:", image_url)
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            cur.execute("""
+                INSERT INTO ebooks (title, filename, image)
+                VALUES (%s, %s, %s)
+            """, (title, pdf_url, image_url))
+
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            return redirect("/")
+
+        except Exception as e:
+            return f"ERROR BESAR: {str(e)}"
 
     return render_template("upload.html")
 
