@@ -139,11 +139,18 @@
 
                 <div class="card h-100 shadow-sm">
                      {% if ebook.image %}
-                    <img src="{{ ebook.image }}">
+                    <img src="{{ ebook.image }}"
                         class="card-img-top"
                         alt="Cover Ebook"
-                        style="height: 250px; object-fit: cover;">
+                        style="height: 250px; object-fit: cover;"
+                    >
                     {% else %}
+                    <img src="{{ ebook.image }}"
+                        class="card-img-top"
+                        alt="Default Cover"
+                        style="height: 250px; object-fit: cover;"
+                    >
+                    {% endif %}
                     <div class="card-body d-flex flex-column">
 
                         <!-- Judul -->
