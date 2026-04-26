@@ -144,11 +144,6 @@
                         alt="Cover Ebook"
                         style="height: 250px; object-fit: cover;">
                     {% else %}
-                    <img src="{{ ebook.image }}">
-                        class="card-img-top"
-                        alt="Default Cover"
-                        style="height: 250px; object-fit: cover;">
-                    {% endif %}
                     <div class="card-body d-flex flex-column">
 
                         <!-- Judul -->
@@ -157,7 +152,7 @@
                         </h5>
 
                         <!-- Tombol Download -->
-                        <a href="{{ ebook.filename }}" target="_blank">Download</a>
+                        <a href="{{ ebook.filename }}" target="_blank" class="btn btn-warning">Download</a>
 
                     </div>
                 </div>
