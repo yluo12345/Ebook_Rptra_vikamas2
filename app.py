@@ -89,11 +89,11 @@ def index():
 def upload():
     if request.method == "POST":
         title = request.form["title"]
-        file = request.files["file"]
-        image = request.files["image"]
+        file = request.files.get("file")
+        image = request.files.get("image")
 
-        if not file or not image:
-            return "File ebook dan gambar wajib diupload"
+        if not file or file.filename == "" or not image or image.filename == "":
+             return "File ebook dan gambar wajib diupload"
 
         # upload PDF ke cloudinary
         pdf_upload = cloudinary.uploader.upload(
